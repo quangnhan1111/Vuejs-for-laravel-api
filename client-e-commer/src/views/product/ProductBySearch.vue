@@ -1,0 +1,132 @@
+<template>
+  <div class="recommended_items"><!--recommended_items-->
+    <h2  class="title text-center">key: {{key}}</h2>
+    <div id="recommended-item-carousel" class="carousel slide" data-ride="carousel">
+      <div class="carousel-inner">
+        <div class="item active">
+          <div class="col-sm-4" v-for="Product in listProducts" :key="Product.id">
+            <div class="product-image-wrapper">
+              <div class="single-products">
+                <div class="productinfo text-center">
+                  <img :src="Product.link" width="100px"  height="100px" alt="">
+                  <h2>{{Product.price}}.00$</h2>
+                  <p>Name: {{Product.name}}</p>
+                  <p>Des: {{Product.des.substring(0,100)+".."}}</p>
+                </div>
+
+              </div>
+              <div class="choose">
+                <ul class="nav nav-pills nav-justified">
+                  <router-link v-bind:to="`/product-detail/${Product.name}`" class="button is-dark mt-4">View details</router-link>
+                  <li><a href="#"><i class="fa fa-plus-square"></i>Add to wishlist</a></li>
+                  <li><a href="#"><i class="fa fa-plus-square"></i>Add to compare</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <Paginate
+          :pagination=paginate
+          :totalPages="Math.ceil(paginate.total/paginate.per_page)"
+          :total="paginate.total"
+          :per-page="paginate.per_page"
+          :currentPage="paginate.current_page"
+          @pagechanged="onPageChange"
+      />
+    </div>
+  </div><!--/recommended_items-->
+</template>
+<script>
+import axios from "axios";
+import {toast} from "bulma-toast";
+import Paginate from "../paginate/Paginate";
+
+export default {
+  name: 'ProductBySearch',
+  components: {
+    Paginate
+  },
+  data() {
+    return {
+      listProducts: [],
+      details: [],
+      key: this.$route.params.key,
+      paginate: {
+        current_page:1,
+        first_page_url:"",
+        last_page:1,
+        last_page_url:"",
+        per_page:1,
+        total: 1,
+      },
+    }
+  },
+  created() {
+    console.log(this.key)
+    this.getData()
+  },
+  methods: {
+    onPageChange(page){
+      this.paginate.current_page = page
+    },
+    async addToCart(id) {
+      await axios.get('/products/'+id).then((response)=> {
+        this.details = response.data.data[0]
+      }).catch(() =>{
+      })
+      this.quantity = 1
+
+      const item = {
+        product: this.details,
+        quantity: this.quantity
+      }
+
+      console.log(item);
+
+      this.$store.commit('addToCart', item)
+      console.log(localStorage.getItem('cart'));
+      toast({
+        message: 'The product was added to the cart',
+        type: 'is-success',
+        dismissible: true,
+        pauseOnHover: true,
+        duration: 3000,
+        position: 'bottom-right',
+      })
+    },
+    async getData() {
+      // this.checklogin();
+      await axios
+          .get('/client/product/search/'+this.key+'?page='+this.paginate.current_page)
+          .then(response => {
+            console.log(response.data.data)
+            this.all = response.data.data
+            this.listProducts = this.all.data
+            this.paginate.current_page = this.all.current_page
+            this.paginate.first_page_url = this.all.first_page_url
+            this.paginate.last_page = this.all.last_page
+            this.paginate.last_page_url = this.all.last_page_url
+            this.paginate.per_page = this.all.per_page
+            this.paginate.total = this.all.total
+            // this.object.loading = false
+          })
+          .catch(error => {
+            console.log(error)
+          })
+    },
+  },
+  watch: {
+    paginate: {
+      async handler(){
+        console.log(this.paginate.current_page)
+        console.log(Math.ceil(this.paginate.total/this.paginate.per_page))
+        await this.getData();
+      },
+      deep: true
+    },
+  }
+}
+</script>
